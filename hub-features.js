@@ -58,9 +58,17 @@
 
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fallbackAvatar=name=>'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="40" fill="#242833"/><text x="40" y="48" text-anchor="middle" font-family="Arial" font-size="32" font-weight="700" fill="#9da3b0">${String(name||'P').trim().slice(0,1).toUpperCase()}</text></svg>`);
-  async function getMe(){const sb=window.supabaseClient;if(!sb)return null;try{const {data}=await sb.auth.getUser();return data?.user||null}catch{return null}}
-  async function getProfile(id){const sb=window.supabaseClient;if(!sb||!id)return null;try{const {data}=await sb.from('profiles').select('id,display_name,avatar_url').eq('id',id).maybeSingle();return data||null}catch{return null}}
-  async function getRelation(a,b){const sb=window.supabaseClient;const [{data:f},{data:r}]=await Promise.all([sb.from('profile_follows').select('id').eq('follower_id',a).eq('following_id',b).maybeSingle(),sb.from('profile_follows').select('id').eq('follower_id',b).eq('following_id',a).maybeSingle()]);return{following:!!f,mutual:!!f&&!!r}}
+
+  // IMPORTANT: supabaseClient is a top-level const in index.html, so it is not a
+  // window property. Always prefer the lexical client and only use window as fallback.
+  const getSharedSupabase=()=>{
+    try { if(typeof supabaseClient!=='undefined' && supabaseClient) return supabaseClient; } catch {}
+    return window.supabaseClient||null;
+  };
+
+  async function getMe(){const sb=getSharedSupabase();if(!sb)return null;try{const {data}=await sb.auth.getUser();return data?.user||null}catch{return null}}
+  async function getProfile(id){const sb=getSharedSupabase();if(!sb||!id)return null;try{const {data}=await sb.from('profiles').select('id,display_name,avatar_url').eq('id',id).maybeSingle();return data||null}catch{return null}}
+  async function getRelation(a,b){const sb=getSharedSupabase();if(!sb||!a||!b)return{following:false,mutual:false};const [{data:f},{data:r}]=await Promise.all([sb.from('profile_follows').select('id').eq('follower_id',a).eq('following_id',b).maybeSingle(),sb.from('profile_follows').select('id').eq('follower_id',b).eq('following_id',a).maybeSingle()]);return{following:!!f,mutual:!!f&&!!r}}
   const fmtTime=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'':d.toLocaleString([], {month:'numeric',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'})};
   const isImageMessage=m=>String(m?.message_type||'').toLowerCase()==='image';
 
@@ -78,13 +86,13 @@
   }
 
   async function loadChatExact(targetId){
-    const sb=window.supabaseClient,me=await getMe();if(!sb||!me)return;const [meProfile,targetProfile]=await Promise.all([getProfile(me.id),getProfile(targetId)]);
+    const sb=getSharedSupabase(),me=await getMe();if(!sb||!me)return;const [meProfile,targetProfile]=await Promise.all([getProfile(me.id),getProfile(targetId)]);
     const {data,error}=await sb.from('direct_messages').select('id,sender_id,recipient_id,message,message_type,created_at').or(`and(sender_id.eq.${me.id},recipient_id.eq.${targetId}),and(sender_id.eq.${targetId},recipient_id.eq.${me.id})`).order('created_at',{ascending:true}).limit(500);
     if(error){const out=document.getElementById('sgMessages');if(out)out.innerHTML='<div class="sg-empty">Unable to load messages.</div>';return}renderMessages(data||[],me.id,meProfile,targetProfile);
   }
 
   async function sendImageExact(file,targetId){
-    const sb=window.supabaseClient,me=await getMe();if(!sb||!me||!file)return;if(!file.type.startsWith('image/')){alert('Please select an image.');return}
+    const sb=getSharedSupabase(),me=await getMe();if(!sb||!me||!file)return;if(!file.type.startsWith('image/')){alert('Please select an image.');return}
     const path=`${me.id}/${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name.replace(/[^a-zA-Z0-9._-]/g,'_')}`;
     const {error:uploadError}=await sb.storage.from('quiz-chat-images').upload(path,file,{contentType:file.type,upsert:false});if(uploadError){alert('Image could not be uploaded: '+uploadError.message);return}
     const {data:publicData}=sb.storage.from('quiz-chat-images').getPublicUrl(path),imageUrl=publicData?.publicUrl;if(!imageUrl){alert('Image URL could not be created.');return}
@@ -93,12 +101,12 @@
   }
 
   function subscribeChat(targetId){
-    const sb=window.supabaseClient,meId=window.__sgChatMeId;if(!sb||!meId)return null;
+    const sb=getSharedSupabase(),meId=window.__sgChatMeId;if(!sb||!meId)return null;
     return sb.channel(`main-hub-direct-chat-${meId}-${targetId}-${Date.now()}`).on('postgres_changes',{event:'INSERT',schema:'public',table:'direct_messages'},payload=>{const m=payload.new;if(!m)return;const belongs=(String(m.sender_id)===String(meId)&&String(m.recipient_id)===String(targetId))||(String(m.sender_id)===String(targetId)&&String(m.recipient_id)===String(meId));if(belongs)loadChatExact(targetId)}).subscribe();
   }
 
   async function openExactChat(targetId){
-    const sb=window.supabaseClient,me=await getMe();if(!sb||!me){if(typeof openAuth==='function')openAuth();return}
+    const sb=getSharedSupabase(),me=await getMe();if(!sb||!me){if(typeof openAuth==='function')openAuth();return}
     const rel=await getRelation(me.id,targetId);if(!rel.mutual){alert('Messaging is available after you follow each other.');return}
     const target=await getProfile(targetId),title=`Message ${target?.display_name||'User'}`;let modal=document.getElementById('sgChatModal');
     if(!modal){modal=document.createElement('div');modal.id='sgChatModal';modal.className='sg-modal';modal.innerHTML=`<div class="sg-box"><div class="sg-head"><h2 id="sgChatTitle"></h2><button class="sg-close" type="button">×</button></div><div class="sg-body"></div></div>`;document.body.appendChild(modal);modal.querySelector('.sg-close').onclick=()=>modal.classList.remove('open');modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open')})}
