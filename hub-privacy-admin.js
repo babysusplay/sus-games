@@ -4,14 +4,13 @@
 
   const ADMIN_PUBLIC_IDS = new Set(['USER-000001']);
   const adminCache = new Set(ADMIN_PUBLIC_IDS);
+  const adminNames = new Set();
   let adminTableLoaded = false;
 
   const getSB = () => {
     try { return (typeof supabaseClient !== 'undefined') ? supabaseClient : window.supabaseClient; }
     catch (_) { return window.supabaseClient; }
   };
-
-  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
   function injectStyle() {
     if (document.getElementById('susGamesPrivacyStyle')) return;
@@ -38,23 +37,23 @@
     try {
       const { data } = await sb.from('admin_users').select('user_id');
       (data || []).forEach(r => { if (r?.user_id) adminCache.add(String(r.user_id)); });
-    } catch (_) {
-      // The table may intentionally be protected by RLS. Keep the known public admin ID fallback.
-    }
+    } catch (_) {}
+    try {
+      if (adminCache.size) {
+        const { data } = await sb.from('profiles').select('user_id,display_name').in('user_id',[...adminCache]);
+        (data || []).forEach(p => { if (p?.display_name) adminNames.add(String(p.display_name).trim().toLowerCase()); });
+      }
+    } catch (_) {}
   }
 
   async function currentAdmin() {
     const sb = getSB();
     if (!sb) return false;
-    try {
-      const { data } = await sb.rpc('is_admin');
-      return data === true;
-    } catch (_) { return false; }
+    try { const { data } = await sb.rpc('is_admin'); return data === true; }
+    catch (_) { return false; }
   }
 
-  function isAdminPublicId(id) {
-    return !!id && adminCache.has(String(id));
-  }
+  function isAdminPublicId(id) { return !!id && adminCache.has(String(id)); }
 
   function addBadge(nameEl, isAdmin, cls='sg-admin-badge') {
     if (!nameEl || !isAdmin || nameEl.querySelector?.('.sg-admin-badge,.hub-admin-badge,.lb-admin-badge')) return;
@@ -75,30 +74,23 @@
 
   function scrubEmails(root=document) {
     root.querySelectorAll('.hub-search-result').forEach(card => {
-      card.querySelectorAll('small').forEach(el => {
-        if ((el.textContent || '').includes('@')) el.remove();
-      });
+      card.querySelectorAll('small').forEach(el => { if ((el.textContent || '').includes('@')) el.remove(); });
     });
-    // Never expose an email inside public social/profile UI.
     root.querySelectorAll('.sg-user').forEach(card => {
-      card.querySelectorAll('small').forEach(el => {
-        if ((el.textContent || '').includes('@')) el.remove();
-      });
+      card.querySelectorAll('small').forEach(el => { if ((el.textContent || '').includes('@')) el.remove(); });
     });
   }
 
   function scan() {
     scrubEmails();
-
     document.querySelectorAll('.sg-user').forEach(el => addBadgeByContainer(el, '.sg-main strong', 'sg-admin-badge'));
     document.querySelectorAll('.hub-search-result').forEach(el => addBadgeByContainer(el, 'strong', 'hub-admin-badge'));
 
     document.querySelectorAll('.lb-row').forEach(el => {
       const name = el.querySelector('.lb-player strong');
       if (!name) return;
-      const text = el.textContent || '';
-      const match = text.match(/\b(USER-[A-Za-z0-9_-]+)\b/i);
-      if (match && isAdminPublicId(match[1])) addBadge(name, true, 'lb-admin-badge');
+      const cleanName = (name.textContent || '').replace(/\s*ADMIN\s*$/i,'').trim().toLowerCase();
+      if (adminNames.has(cleanName)) addBadge(name, true, 'lb-admin-badge');
     });
 
     const publicProfile = document.querySelector('#sgProfileModal .sg-profile');
@@ -107,18 +99,13 @@
       const idEl = publicProfile.querySelector('.sg-profile-id');
       const idMatch = (idEl?.textContent || '').match(/User ID:\s*([A-Za-z0-9_-]+)/i);
       if (name && idMatch && isAdminPublicId(idMatch[1])) addBadge(name, true);
-      // The public profile renderer should not display an email, even if another script adds one.
       publicProfile.querySelectorAll('*').forEach(el => {
-        if (el.children.length === 0 && (el.textContent || '').includes('@')) {
-          if (!el.matches('input')) el.remove();
-        }
+        if (el.children.length === 0 && (el.textContent || '').includes('@') && !el.matches('input')) el.remove();
       });
     }
 
     const profileName = document.getElementById('profileName');
-    if (profileName) {
-      currentAdmin().then(ok => { if (ok) addBadge(profileName, true); });
-    }
+    if (profileName) currentAdmin().then(ok => { if (ok) addBadge(profileName, true); });
   }
 
   function observe() {
@@ -128,7 +115,7 @@
 
   function install() {
     injectStyle();
-    loadAdminIds();
+    loadAdminIds().then(scan);
     scan();
     observe();
     setTimeout(scan, 300);
