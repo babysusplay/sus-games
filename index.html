@@ -76,5 +76,7 @@ function openAdmin(){document.getElementById('profileMenu').classList.remove('op
 supabaseClient.auth.onAuthStateChange(()=>loadSession());loadSession();
 document.addEventListener('click',e=>{if(!e.target.closest('.nav')){document.getElementById('menu').classList.remove('open');document.getElementById('profileMenu').classList.remove('open')}});
 </script>
+
+<script src="./hub-features.js"></script>
 </body>
 </html>
