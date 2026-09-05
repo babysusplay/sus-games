@@ -64,3 +64,11 @@ revoke all on function public.get_profile_game_stats(uuid) from public;
 revoke all on function public.get_game_history(text, text, integer) from public;
 grant execute on function public.get_profile_game_stats(uuid) to authenticated;
 grant execute on function public.get_game_history(text, text, integer) to authenticated;
+
+-- Scores are public leaderboard data for signed-in players.
+drop policy if exists "game scores: authenticated public read" on public.game_scores;
+create policy "game scores: authenticated public read"
+  on public.game_scores
+  for select
+  to authenticated
+  using (true);
