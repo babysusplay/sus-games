@@ -1,0 +1,45 @@
+name: Install Main Hub Features
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Add features module to index
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('index.html')
+          text = p.read_text(encoding='utf-8')
+          marker = '<script src="./hub-features.js"></script>'
+          if marker not in text:
+              pos = text.lower().rfind('</body>')
+              if pos == -1:
+                  raise SystemExit('index.html has no closing body tag')
+              text = text[:pos] + '\n' + marker + '\n' + text[pos:]
+              p.write_text(text, encoding='utf-8')
+              print('Feature module installed.')
+          else:
+              print('Feature module already installed.')
+
+      - name: Commit feature wiring
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No changes needed."
+          else
+            git commit -m "Connect Main Hub feature module"
+            git push
+          fi
