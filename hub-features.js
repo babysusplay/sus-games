@@ -8,7 +8,7 @@
   .hub-chat{display:flex;flex-direction:column;height:470px}.hub-chat-head{padding-bottom:10px;border-bottom:1px solid var(--line);font-weight:700}.hub-messages{flex:1;overflow:auto;padding:12px 0;display:flex;flex-direction:column;gap:8px}.hub-msg{max-width:78%;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.06)}.hub-msg.me{align-self:flex-end;background:rgba(255,255,255,.12)}.hub-msg small{display:block;color:#888;margin-top:3px;font-size:10px}.hub-compose{display:flex;gap:8px}.hub-compose input{flex:1}.hub-profile{text-align:center}.hub-profile img{width:90px;height:90px;border-radius:50%;object-fit:cover;background:#242833;border:1px solid var(--line)}.hub-admin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.hub-stat{border:1px solid var(--line);border-radius:11px;padding:14px;background:rgba(255,255,255,.03)}.hub-stat b{font-size:24px;display:block}.hub-stat span{color:#888;font-size:12px}@media(max-width:600px){.hub-admin-grid{grid-template-columns:1fr}.hub-search{flex-direction:column}.hub-user{align-items:flex-start}}
   `;
   const style=document.createElement('style'); style.textContent=css; document.head.appendChild(style);
-  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc=s=>String(s??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const user=()=>window.currentUser||null;
   const avatarHTML=(url,name)=>url&&/^https?:\/\//i.test(url)?`<img src="${esc(url)}" alt="" onerror="this.style.display='none'">`:`<div style="width:40px;height:40px;border-radius:11px;background:#242833;display:grid;place-items:center;font-size:20px">${esc((name||'P').slice(0,1).toUpperCase())}</div>`;
   let state={tab:'search',chat:null,profile:null};
@@ -18,7 +18,7 @@
   window.hubTab=k=>{state.tab=k;state.chat=null;renderSocial()};
   async function renderSocial(){const m=ensureModal();m.classList.add('open');const body=document.getElementById('hubBody');body.innerHTML=tabs()+'<div class="hub-empty">Loading...</div>';if(!user()){body.innerHTML=tabs()+'<div class="hub-empty">Login to use Social, friends and chat.</div>';return}if(state.tab==='search')return searchView();if(state.tab==='friends')return listRelation('friends');if(state.tab==='following')return listRelation('following');if(state.tab==='followers')return listRelation('followers');if(state.tab==='notifications')return notificationsView();return messagesView()}
   function searchView(){document.getElementById('hubBody').innerHTML=tabs()+`<div class="hub-search"><input id="hubSearchInput" placeholder="Search players by name or email"><button class="hub-mini" onclick="hubSearch()">Search</button></div><div id="hubSearchResults" class="hub-list"><div class="hub-empty">Search for a player.</div></div>`;document.getElementById('hubSearchInput').addEventListener('keydown',e=>{if(e.key==='Enter')hubSearch()})}
-  window.hubSearch=async()=>{const q=document.getElementById('hubSearchInput')?.value.trim(),out=document.getElementById('hubSearchResults');if(!q){out.innerHTML='<div class="hub-empty">Type a player name.</div>';return}out.innerHTML='<div class="hub-empty">Searching...</div>';const {data,error}=await sb.from('profiles').select('id,display_name,avatar_url,email').or(`display_name.ilike.%${q}%,email.ilike.%${q}%`).limit(30);if(error){out.innerHTML='<div class="hub-empty">Search failed.</div>';return}renderUsers(out,data||[])};
+  window.hubSearch=async()=>{const q=document.getElementById('hubSearchInput')?.value.trim(),out=document.getElementById('hubSearchResults');if(!q){out.innerHTML='<div class="hub-empty">Type a player name.</div>';return}out.innerHTML='<div class="hub-empty">Searching...</div>';const safe=q.replace(/[%,]/g,'');const {data,error}=await sb.from('profiles').select('id,display_name,avatar_url,email').or(`display_name.ilike.%${safe}%,email.ilike.%${safe}%`).limit(30);if(error){out.innerHTML='<div class="hub-empty">Search failed.</div>';return}renderUsers(out,data||[])};
   async function followingIds(){const {data}=await sb.from('profile_follows').select('following_id').eq('follower_id',user().id);return(data||[]).map(x=>x.following_id)}
   async function followerIds(){const {data}=await sb.from('profile_follows').select('follower_id').eq('following_id',user().id);return(data||[]).map(x=>x.follower_id)}
   async function isFollowing(id){const {data}=await sb.from('profile_follows').select('id').eq('follower_id',user().id).eq('following_id',id).maybeSingle();return!!data}
@@ -42,4 +42,21 @@
   // Admin is verified by Supabase before the panel is shown.
   document.addEventListener('click',e=>{if(!e.target.closest('#socialHubModal')&&!e.target.closest('#adminHubModal')&&!e.target.closest('.nav')){document.getElementById('menu')?.classList.remove('open');document.getElementById('profileMenu')?.classList.remove('open')}});
   const a=document.getElementById('adminBtn');if(a){a.style.display='none';a.style.fontSize='inherit';a.style.padding='10px 14px'}
+})();
+
+// Main Hub routing patch: keep Search, Social, Profile and Admin inside this hub.
+(() => {
+  const originalShowSection = window.showSection;
+  window.showSection = function(type) {
+    if (type === 'search' || type === 'social') {
+      if (typeof window.renderSocial === 'function') window.renderSocial();
+      else if (typeof window.hubTab === 'function') { window.hubTab(type === 'search' ? 'search' : 'friends'); }
+      return;
+    }
+    return originalShowSection ? originalShowSection(type) : undefined;
+  };
+  // renderSocial is private in the original IIFE, so expose it through a tiny adapter.
+  const originalHubTab = window.hubTab;
+  window.renderSocial = () => originalHubTab ? originalHubTab('search') : undefined;
+  window.openAdmin = window.openAdmin || (() => alert('Admin access unavailable.'));
 })();
