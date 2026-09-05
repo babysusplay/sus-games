@@ -2,10 +2,11 @@
 (() => {
   'use strict';
   document.addEventListener('DOMContentLoaded', () => {
-    const sb = window.supabaseClient;
+    // index.html creates `supabaseClient` as a top-level const, not window.supabaseClient.
+    // Use the actual client first and keep the window fallback for compatibility.
+    const sb = (typeof supabaseClient !== 'undefined' ? supabaseClient : window.supabaseClient);
     if (!sb) return console.error('[Sus Games] Supabase client missing');
     const $ = id => document.getElementById(id);
-    const esc = v => String(v ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     const originalShowSection = window.showSection;
     let tab='search', target=null;
 
@@ -41,7 +42,6 @@
     async function chat(id){target=id;tab='messages';await open()}
     async function chatView(out,me){const p=await sb.from('profiles').select('display_name').eq('id',target).maybeSingle();out.innerHTML='<button class="profile-action" id="hubChatBack" style="width:auto">← Back</button><strong> 💬 '+esc(p.data?.display_name||'Player')+'</strong><div id="hubChatMessages" style="height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px"></div><div style="display:flex;gap:8px;margin-top:8px"><input id="hubChatInput" maxlength="1000" placeholder="Write a message..." style="flex:1;padding:11px;border-radius:10px;border:1px solid var(--line);background:#11141b;color:#fff"><button class="profile-action" id="hubChatSend" style="width:auto;margin:0">Send</button></div>';$('hubChatBack').onclick=()=>{target=null;render()};const load=async()=>{const r=await sb.from('direct_messages').select('sender_id,message,created_at').or('and(sender_id.eq.'+me.id+',recipient_id.eq.'+target+'),and(sender_id.eq.'+target+',recipient_id.eq.'+me.id+')').order('created_at',{ascending:true}).limit(200);$('hubChatMessages').innerHTML=(r.data||[]).map(x=>'<div style="margin:6px 0;text-align:'+(x.sender_id===me.id?'right':'left')+'"><span style="display:inline-block;padding:8px 10px;border-radius:9px;background:'+(x.sender_id===me.id?'#fff':'#252a34')+';color:'+(x.sender_id===me.id?'#111':'#fff')+'">'+esc(x.message)+'</span></div>').join('')||'<p class="hint">No messages yet.</p>'};const send=async()=>{const i=$('hubChatInput'),v=i.value.trim();if(!v)return;const r=await sb.from('direct_messages').insert({sender_id:me.id,recipient_id:target,message:v});if(r.error)alert(r.error.message);else{i.value='';load()}};$('hubChatSend').onclick=send;$('hubChatInput').onkeydown=e=>{if(e.key==='Enter')send()};await load()}
     async function admin(){const me=await user();if(!me){openAuth();return}const r=await sb.rpc('is_admin');if(r.error||r.data!==true){alert('Admin access denied.');return}let m=$('hubAdminModal');if(!m){m=document.createElement('div');m.id='hubAdminModal';m.className='modal';m.innerHTML='<div class="modal-box"><div class="modal-head"><h2>🔐 Admin Panel</h2><button class="close" id="hubAdminClose">×</button></div><div id="hubAdminBody"></div></div>';document.body.appendChild(m);$('hubAdminClose').onclick=()=>m.classList.remove('open')}m.classList.add('open');$('hubAdminBody').innerHTML='<p class="hint">Admin access verified. Main Hub admin panel is ready.</p>'}
-
     window.showSection=(type)=>type==='social'||type==='search'?open():(originalShowSection?originalShowSection(type):undefined);
     window.openAdmin=admin;
     window.SusHub={open,profile,follow,like,chat,admin};
