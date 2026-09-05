@@ -15,22 +15,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Add features module to index
+      - name: Keep feature module wiring stable
         shell: python
         run: |
           from pathlib import Path
+          import re
           p = Path('index.html')
           text = p.read_text(encoding='utf-8')
-          marker = '<script src="./hub-features.js"></script>'
-          if marker not in text:
+          version = '${{ github.sha }}'
+          text = re.sub(r'<script\s+src="\./hub-features\.js(?:\?v=[^"]+)?"\s+defer></script>', f'<script src="./hub-features.js?v={version}" defer></script>', text)
+          text = re.sub(r'<script\s+src="\./hub-override\.js(?:\?v=[^"]+)?"></script>', f'<script src="./hub-override.js?v={version}"></script>', text)
+          if '<script src="./hub-features.js?v=' not in text:
               pos = text.lower().rfind('</body>')
               if pos == -1:
                   raise SystemExit('index.html has no closing body tag')
-              text = text[:pos] + '\n' + marker + '\n' + text[pos:]
-              p.write_text(text, encoding='utf-8')
-              print('Feature module installed.')
-          else:
-              print('Feature module already installed.')
+              text = text[:pos] + f'\n<script src="./hub-features.js?v={version}" defer></script>\n' + text[pos:]
+          if '<script src="./hub-override.js?v=' not in text:
+              pos = text.lower().find('</head>')
+              if pos == -1:
+                  raise SystemExit('index.html has no closing head tag')
+              text = text[:pos] + f'<script src="./hub-override.js?v={version}"></script>\n' + text[pos:]
+          p.write_text(text, encoding='utf-8')
 
       - name: Commit feature wiring
         run: |
@@ -40,6 +45,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "No changes needed."
           else
-            git commit -m "Connect Main Hub feature module"
+            git commit -m "Keep Main Hub feature wiring stable"
             git push
           fi
