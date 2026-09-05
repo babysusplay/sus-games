@@ -10,17 +10,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Wire feature modules
+      - name: Wire feature modules with cache busting
         run: |
           python3 - <<'PY'
           from pathlib import Path
+          import re
           p=Path('index.html')
           s=p.read_text(encoding='utf-8')
-          tags=['<script src="./hub-features.js" defer></script>','<script src="./hub-override.js"></script>']
-          marker='</head>'
-          for tag in tags:
-              if tag not in s:
-                  s=s.replace(marker, tag+'\n'+marker, 1)
+          version='${{ github.sha }}'
+          s=re.sub(r'<script\s+src="\./hub-features\.js(?:\?v=[^"]+)?"\s+defer></script>', f'<script src="./hub-features.js?v={version}" defer></script>', s)
+          s=re.sub(r'<script\s+src="\./hub-override\.js(?:\?v=[^"]+)?"></script>', f'<script src="./hub-override.js?v={version}"></script>', s)
+          if '<script src="./hub-features.js?v=' not in s:
+              s=s.replace('</head>', f'<script src="./hub-features.js?v={version}" defer></script>\n</head>', 1)
+          if '<script src="./hub-override.js?v=' not in s:
+              s=s.replace('</head>', f'<script src="./hub-override.js?v={version}"></script>\n</head>', 1)
           p.write_text(s, encoding='utf-8')
           PY
       - name: Commit wiring
@@ -28,5 +31,5 @@ jobs:
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add index.html
-          git diff --cached --quiet || git commit -m "Wire Main Hub feature overrides"
+          git diff --cached --quiet || git commit -m "Bust Main Hub feature script cache"
           git push
