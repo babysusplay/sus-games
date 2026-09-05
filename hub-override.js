@@ -1,6 +1,7 @@
 /* Sus Games Main Hub search bridge */
 (() => {
   'use strict';
+  const privacyScript=document.createElement('script');privacyScript.src='./hub-privacy-admin.js';document.head.appendChild(privacyScript);
   document.addEventListener('DOMContentLoaded', () => {
     const sb = (typeof supabaseClient !== 'undefined') ? supabaseClient : window.supabaseClient;
     if (!sb) return;
@@ -38,17 +39,17 @@
     async function runSearch(showEmpty=true){
       const input=$('hubPlayerSearchInput'),out=$('hubPlayerSearchResults'),raw=input?.value.trim()||'';if(!out)return;if(!raw){out.innerHTML='<div class="hub-search-empty">Start typing to search players.</div>';return}
       const requestId=++searchRequest;const q=raw.replace(/[%,]/g,'').trim();if(!q)return;out.innerHTML='<div class="hub-search-empty">Searching...</div>';
-      const textResult=await sb.from('profiles').select('id,user_id,display_name,email,avatar_url,created_at').or(`display_name.ilike.%${q}%,email.ilike.%${q}%,user_id.ilike.%${q}%`).limit(30);
+      const textResult=await sb.from('profiles').select('id,user_id,display_name,avatar_url,created_at').or(`display_name.ilike.%${q}%,user_id.ilike.%${q}%`).limit(30);
       if(requestId!==searchRequest)return;let rows=textResult.error?[]:(textResult.data||[]);
-      if(validUuid(raw)){const exact=await sb.from('profiles').select('id,user_id,display_name,email,avatar_url,created_at').eq('id',raw).limit(1);if(requestId!==searchRequest)return;if(!exact.error&&exact.data?.length&&!rows.some(r=>r.id===exact.data[0].id))rows.unshift(exact.data[0])}
+      if(validUuid(raw)){const exact=await sb.from('profiles').select('id,user_id,display_name,avatar_url,created_at').eq('id',raw).limit(1);if(requestId!==searchRequest)return;if(!exact.error&&exact.data?.length&&!rows.some(r=>r.id===exact.data[0].id))rows.unshift(exact.data[0])}
       if(textResult.error){console.error('[Sus Games] Player search failed:',textResult.error);out.innerHTML='<div class="hub-search-empty">Search failed. Please try again.</div>';return}
       if(!rows.length){out.innerHTML=showEmpty?`<div class="hub-search-empty">No player found for <strong>${esc(raw)}</strong>.</div>`:'<div class="hub-search-empty">No matching players.</div>';return}
-      out.innerHTML=rows.map(p=>`<div class="hub-search-result" style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.035);margin-bottom:8px;cursor:pointer" data-player-id="${esc(p.id)}">${avatar(p.avatar_url,p.display_name)}<div style="min-width:0;flex:1"><strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.display_name||'Player')}</strong><small style="display:block;color:#858b98;margin-top:4px">User ID: ${esc(p.user_id||'N/A')}</small>${p.email?`<small style="display:block;color:#6f7580;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.email)}</small>`:''}</div><span style="color:#858b98;font-size:18px">›</span></div>`).join('');
+      out.innerHTML=rows.map(p=>`<div class="hub-search-result" style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.035);margin-bottom:8px;cursor:pointer" data-player-id="${esc(p.id)}">${avatar(p.avatar_url,p.display_name)}<div style="min-width:0;flex:1"><strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.display_name||'Player')}</strong><small style="display:block;color:#858b98;margin-top:4px">User ID: ${esc(p.user_id||'N/A')}</small></div><span style="color:#858b98;font-size:18px">›</span></div>`).join('');
       out.querySelectorAll('[data-player-id]').forEach(card=>{card.onclick=async()=>{if(typeof window.sgViewProfile==='function'){await window.sgViewProfile(card.dataset.playerId)}else{await openFoundProfile(card.dataset.playerId)}}});
     }
     async function openFoundProfile(id){
       if(typeof window.sgViewProfile==='function'){await window.sgViewProfile(id);return}
-      const r=await sb.from('profiles').select('id,user_id,display_name,email,avatar_url').eq('id',id).maybeSingle();if(r.error||!r.data){alert(r.error?.message||'Profile not found.');return}
+      const r=await sb.from('profiles').select('id,user_id,display_name,avatar_url').eq('id',id).maybeSingle();if(r.error||!r.data){alert(r.error?.message||'Profile not found.');return}
     }
     window.showSection=type=>{
       if(type==='search'){document.getElementById('menu')?.classList.remove('open');document.getElementById('profileMenu')?.classList.remove('open');openSearch();return}
