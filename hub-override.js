@@ -1,49 +1,187 @@
-/* Sus Games Main Hub - safe UI bridge */
+/* Sus Games Main Hub UI bridge */
 (() => {
   'use strict';
+
   document.addEventListener('DOMContentLoaded', () => {
-    // index.html creates `supabaseClient` as a top-level const, not window.supabaseClient.
-    // Use the actual client first and keep the window fallback for compatibility.
-    const sb = (typeof supabaseClient !== 'undefined' ? supabaseClient : window.supabaseClient);
-    if (!sb) return console.error('[Sus Games] Supabase client missing');
+    const sb = (typeof supabaseClient !== 'undefined') ? supabaseClient : window.supabaseClient;
+    if (!sb) {
+      console.error('[Sus Games] Supabase client missing');
+      return;
+    }
+
     const $ = id => document.getElementById(id);
     const originalShowSection = window.showSection;
-    let tab='search', target=null;
 
-    function modal(){
-      let m=$('hubSocialModal');
-      if(m)return m;
-      m=document.createElement('div');m.id='hubSocialModal';m.className='modal';
-      m.innerHTML='<div class="modal-box" style="width:min(820px,100%)"><div class="modal-head"><h2>👥 Social</h2><button class="close" id="hubSocialClose">×</button></div><div id="hubSocialBody"></div></div>';
-      document.body.appendChild(m);$('hubSocialClose').onclick=()=>m.classList.remove('open');return m;
+    const esc = value => String(value ?? '').replace(/[&<>\"']/g, c => ({
+      '&':'&amp;', '<':'&lt;', '>':'&gt;', '\"':'&quot;', "'":'&#39;'
+    }[c]));
+
+    function currentUser() {
+      return sb.auth.getUser().then(({ data }) => data?.user || null);
     }
-    function tabs(){return '<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px">'+[['search','🔎 Search'],['friends','👥 Friends'],['following','Following'],['followers','Followers'],['messages','💬 Messages'],['notifications','🔔 Notifications']].map(x=>'<button class="profile-action" style="width:auto;margin:0;padding:9px 12px" data-hub-tab="'+x[0]+'">'+x[1]+'</button>').join('')+'</div>'}
-    function bindTabs(){document.querySelectorAll('[data-hub-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.hubTab;target=null;render()})}
-    async function user(){const r=await sb.auth.getUser();return r.data?.user||null}
-    async function list(ids,out){
-      if(!ids.length){out.innerHTML='<p class="hint">Nothing here yet.</p>';return}
-      const r=await sb.from('profiles').select('id,display_name,avatar_url').in('id',ids);
-      if(r.error){out.innerHTML='<p class="hint">'+esc(r.error.message)+'</p>';return}
-      const me=await user();out.innerHTML=(r.data||[]).map(p=>'<div style="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:11px;margin-bottom:8px"><img src="'+esc(p.avatar_url||'')+'" onerror="this.style.display=\'none\'" style="width:42px;height:42px;border-radius:50%;object-fit:cover"><div style="flex:1"><strong>'+esc(p.display_name||'Player')+'</strong></div><button class="profile-action" style="width:auto;margin:0" data-view="'+p.id+'">View</button>'+(me&&p.id!==me.id?'<button class="profile-action" style="width:auto;margin:0" data-follow="'+p.id+'">Follow</button><button class="profile-action" style="width:auto;margin:0" data-chat="'+p.id+'">💬</button>':'')+'</div>').join('');
-      out.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>profile(b.dataset.view));out.querySelectorAll('[data-follow]').forEach(b=>b.onclick=()=>follow(b.dataset.follow));out.querySelectorAll('[data-chat]').forEach(b=>b.onclick=()=>chat(b.dataset.chat));
+
+    function avatar(url, name) {
+      if (url && /^https?:\/\//i.test(url)) {
+        return `<img src="${esc(url)}" alt="" style="width:46px;height:46px;border-radius:50%;object-fit:cover;background:#242833" onerror="this.style.display='none'">`;
+      }
+      return `<div style="width:46px;height:46px;border-radius:50%;background:#242833;display:grid;place-items:center;font-weight:700;font-size:18px">${esc((name || 'P').slice(0,1).toUpperCase())}</div>`;
     }
-    async function ids(type){const me=await user();if(!me)return[];if(type==='friends'){const [a,b]=await Promise.all([sb.from('profile_follows').select('following_id').eq('follower_id',me.id),sb.from('profile_follows').select('follower_id').eq('following_id',me.id)]);if(a.error)throw a.error;if(b.error)throw b.error;const s=new Set((a.data||[]).map(x=>x.following_id));return(b.data||[]).map(x=>x.follower_id).filter(x=>s.has(x))}const col=type==='followers'?'follower_id':'following_id',filter=type==='followers'?'following_id':'follower_id';const r=await sb.from('profile_follows').select(col).eq(filter,me.id);if(r.error)throw r.error;return(r.data||[]).map(x=>x[col])}
-    async function render(){
-      const body=$('hubSocialBody');if(!body)return;const me=await user();body.innerHTML=tabs()+'<div id="hubSocialContent"><p class="hint">Loading...</p></div>';bindTabs();const out=$('hubSocialContent');
-      if(['friends','following','followers','messages','notifications'].includes(tab)&&!me){out.innerHTML='<p class="hint">Please log in first to use Social.</p>';return}
-      if(tab==='search'){out.innerHTML='<div style="display:flex;gap:8px"><input id="hubSearchInput" placeholder="Search player by name" style="flex:1;padding:11px;border-radius:10px;border:1px solid var(--line);background:#11141b;color:#fff"><button class="profile-action" id="hubSearchGo" style="width:auto;margin:0">Search</button></div><div id="hubSearchResults" style="margin-top:14px"></div>';const run=async()=>{const q=$('hubSearchInput').value.trim(),res=$('hubSearchResults');if(!q)return;res.innerHTML='<p class="hint">Searching...</p>';const r=await sb.from('profiles').select('id').ilike('display_name','%'+q.replace(/[%_]/g,'')+'%').limit(30);if(r.error){res.innerHTML='<p class="hint">'+esc(r.error.message)+'</p>';return}list((r.data||[]).map(x=>x.id),res)};$('hubSearchGo').onclick=run;$('hubSearchInput').onkeydown=e=>{if(e.key==='Enter')run()};return}
-      if(['friends','following','followers'].includes(tab)){try{await list(await ids(tab),out)}catch(e){out.innerHTML='<p class="hint">'+esc(e.message)+'</p>'}return}
-      if(tab==='messages'){if(!target){out.innerHTML='<p class="hint">Choose someone to chat with.</p><div id="hubChatPeople"></div>';try{await list([...new Set([...(await ids('following')),...(await ids('followers'))])],$('hubChatPeople'))}catch(e){$('hubChatPeople').innerHTML='<p class="hint">'+esc(e.message)+'</p>'}return}await chatView(out,me);return}
-      const r=await sb.from('social_notifications').select('message,created_at').eq('recipient_id',me.id).order('created_at',{ascending:false}).limit(50);out.innerHTML=r.error?'<p class="hint">'+esc(r.error.message)+'</p>':((r.data||[]).map(n=>'<div style="padding:10px;border-bottom:1px solid var(--line)"><strong>'+esc(n.message)+'</strong><div class="hint">'+new Date(n.created_at).toLocaleString()+'</div></div>').join('')||'<p class="hint">No notifications.</p>')}
-    async function open(){const m=modal();m.classList.add('open');await render()}
-    async function profile(id){const r=await sb.from('profiles').select('id,display_name,avatar_url,email').eq('id',id).maybeSingle();if(r.error||!r.data)return;const p=r.data;const [l,f,fg]=await Promise.all([sb.from('profile_likes').select('id',{count:'exact',head:true}).eq('user_id',id),sb.from('profile_follows').select('id',{count:'exact',head:true}).eq('following_id',id),sb.from('profile_follows').select('id',{count:'exact',head:true}).eq('follower_id',id)]);$('hubSocialBody').innerHTML='<div style="text-align:center"><img src="'+esc(p.avatar_url||'')+'" onerror="this.style.display=\'none\'" style="width:82px;height:82px;border-radius:50%;object-fit:cover"><h3>'+esc(p.display_name||'Player')+'</h3><p class="hint">'+esc(p.email||'')+'</p><div style="display:flex;justify-content:center;gap:25px;margin:18px 0"><b>'+(l.count||0)+'<br><small>Likes</small></b><b>'+(f.count||0)+'<br><small>Followers</small></b><b>'+(fg.count||0)+'<br><small>Following</small></b></div><button class="profile-action" id="hubBack" style="width:auto">Back</button></div>';$('hubBack').onclick=render}
-    async function follow(id){const me=await user();if(!me){openAuth();return}const e=await sb.from('profile_follows').select('id').eq('follower_id',me.id).eq('following_id',id).maybeSingle();const r=e.data?await sb.from('profile_follows').delete().eq('id',e.data.id):await sb.from('profile_follows').insert({follower_id:me.id,following_id:id});if(r.error)alert(r.error.message);else render()}
-    async function like(id){const me=await user();if(!me){openAuth();return}const e=await sb.from('profile_likes').select('id').eq('user_id',id).eq('liked_by',me.id).maybeSingle();const r=e.data?await sb.from('profile_likes').delete().eq('id',e.data.id):await sb.from('profile_likes').insert({user_id:id,liked_by:me.id});if(r.error)alert(r.error.message);else profile(id)}
-    async function chat(id){target=id;tab='messages';await open()}
-    async function chatView(out,me){const p=await sb.from('profiles').select('display_name').eq('id',target).maybeSingle();out.innerHTML='<button class="profile-action" id="hubChatBack" style="width:auto">← Back</button><strong> 💬 '+esc(p.data?.display_name||'Player')+'</strong><div id="hubChatMessages" style="height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:10px"></div><div style="display:flex;gap:8px;margin-top:8px"><input id="hubChatInput" maxlength="1000" placeholder="Write a message..." style="flex:1;padding:11px;border-radius:10px;border:1px solid var(--line);background:#11141b;color:#fff"><button class="profile-action" id="hubChatSend" style="width:auto;margin:0">Send</button></div>';$('hubChatBack').onclick=()=>{target=null;render()};const load=async()=>{const r=await sb.from('direct_messages').select('sender_id,message,created_at').or('and(sender_id.eq.'+me.id+',recipient_id.eq.'+target+'),and(sender_id.eq.'+target+',recipient_id.eq.'+me.id+')').order('created_at',{ascending:true}).limit(200);$('hubChatMessages').innerHTML=(r.data||[]).map(x=>'<div style="margin:6px 0;text-align:'+(x.sender_id===me.id?'right':'left')+'"><span style="display:inline-block;padding:8px 10px;border-radius:9px;background:'+(x.sender_id===me.id?'#fff':'#252a34')+';color:'+(x.sender_id===me.id?'#111':'#fff')+'">'+esc(x.message)+'</span></div>').join('')||'<p class="hint">No messages yet.</p>'};const send=async()=>{const i=$('hubChatInput'),v=i.value.trim();if(!v)return;const r=await sb.from('direct_messages').insert({sender_id:me.id,recipient_id:target,message:v});if(r.error)alert(r.error.message);else{i.value='';load()}};$('hubChatSend').onclick=send;$('hubChatInput').onkeydown=e=>{if(e.key==='Enter')send()};await load()}
-    async function admin(){const me=await user();if(!me){openAuth();return}const r=await sb.rpc('is_admin');if(r.error||r.data!==true){alert('Admin access denied.');return}let m=$('hubAdminModal');if(!m){m=document.createElement('div');m.id='hubAdminModal';m.className='modal';m.innerHTML='<div class="modal-box"><div class="modal-head"><h2>🔐 Admin Panel</h2><button class="close" id="hubAdminClose">×</button></div><div id="hubAdminBody"></div></div>';document.body.appendChild(m);$('hubAdminClose').onclick=()=>m.classList.remove('open')}m.classList.add('open');$('hubAdminBody').innerHTML='<p class="hint">Admin access verified. Main Hub admin panel is ready.</p>'}
-    window.showSection=(type)=>type==='social'||type==='search'?open():(originalShowSection?originalShowSection(type):undefined);
-    window.openAdmin=admin;
-    window.SusHub={open,profile,follow,like,chat,admin};
-  }, {once:true});
+
+    function ensureSearchModal() {
+      let modal = $('hubPlayerSearchModal');
+      if (modal) return modal;
+
+      modal = document.createElement('div');
+      modal.id = 'hubPlayerSearchModal';
+      modal.className = 'modal';
+      modal.innerHTML = `
+        <div class="modal-box" style="width:min(760px,100%)">
+          <div class="modal-head">
+            <h2>Search Players</h2>
+            <button class="close" id="hubSearchClose">×</button>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center">
+            <input id="hubPlayerSearchInput"
+              autocomplete="off"
+              placeholder="Search username, display name or User ID..."
+              style="flex:1;min-width:0;background:#11141b;border:1px solid var(--line);color:#fff;border-radius:10px;padding:13px 14px;font-size:14px">
+            <button id="hubPlayerSearchGo" class="profile-action" style="width:auto;margin:0;padding:13px 20px">Search</button>
+          </div>
+          <p class="hint">Search by display name, email or User ID.</p>
+          <div id="hubPlayerSearchResults" style="margin-top:18px"></div>
+        </div>`;
+      document.body.appendChild(modal);
+
+      $('hubSearchClose').onclick = () => modal.classList.remove('open');
+      modal.addEventListener('click', e => {
+        if (e.target === modal) modal.classList.remove('open');
+      });
+
+      $('hubPlayerSearchGo').onclick = runSearch;
+      $('hubPlayerSearchInput').onkeydown = e => {
+        if (e.key === 'Enter') runSearch();
+      };
+
+      return modal;
+    }
+
+    function openSearch() {
+      const modal = ensureSearchModal();
+      modal.classList.add('open');
+      setTimeout(() => $('hubPlayerSearchInput')?.focus(), 30);
+    }
+
+    async function runSearch() {
+      const input = $('hubPlayerSearchInput');
+      const out = $('hubPlayerSearchResults');
+      const raw = input?.value.trim() || '';
+      if (!out) return;
+
+      if (!raw) {
+        out.innerHTML = '<div class="hint" style="text-align:center;padding:24px">Enter a player name or User ID.</div>';
+        return;
+      }
+
+      const q = raw.replace(/[%,]/g, '').trim();
+      if (!q) return;
+      out.innerHTML = '<div class="hint" style="text-align:center;padding:24px">Searching...</div>';
+
+      const pattern = `%${q}%`;
+      const result = await sb
+        .from('profiles')
+        .select('id,user_id,display_name,email,avatar_url,created_at')
+        .or(`display_name.ilike.${pattern},user_id.ilike.${pattern},email.ilike.${pattern}`)
+        .limit(30);
+
+      if (result.error) {
+        console.error('[Sus Games] Player search failed:', result.error);
+        out.innerHTML = `<div class="hint" style="text-align:center;padding:24px">Search failed: ${esc(result.error.message)}</div>`;
+        return;
+      }
+
+      const rows = result.data || [];
+      if (!rows.length) {
+        out.innerHTML = `<div class="hint" style="text-align:center;padding:24px">No player found for <strong>${esc(raw)}</strong>.</div>`;
+        return;
+      }
+
+      out.innerHTML = rows.map(p => `
+        <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.035);margin-bottom:8px">
+          ${avatar(p.avatar_url, p.display_name)}
+          <div style="min-width:0;flex:1">
+            <strong style="display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.display_name || 'Player')}</strong>
+            <small style="display:block;color:#858b98;margin-top:4px">User ID: ${esc(p.user_id || 'N/A')}</small>
+            ${p.email ? `<small style="display:block;color:#6f7580;margin-top:2px">${esc(p.email)}</small>` : ''}
+          </div>
+          <button class="profile-action" style="width:auto;margin:0;white-space:nowrap" data-player-id="${esc(p.id)}">View Profile</button>
+        </div>`).join('');
+
+      out.querySelectorAll('[data-player-id]').forEach(btn => {
+        btn.onclick = () => openFoundProfile(btn.dataset.playerId);
+      });
+    }
+
+    async function openFoundProfile(id) {
+      const result = await sb
+        .from('profiles')
+        .select('id,user_id,display_name,email,avatar_url,created_at')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (result.error || !result.data) {
+        alert(result.error?.message || 'Profile not found.');
+        return;
+      }
+
+      const p = result.data;
+      const [followers, following, likes] = await Promise.all([
+        sb.from('profile_follows').select('id', { count:'exact', head:true }).eq('following_id', id),
+        sb.from('profile_follows').select('id', { count:'exact', head:true }).eq('follower_id', id),
+        sb.from('profile_likes').select('id', { count:'exact', head:true }).eq('user_id', id)
+      ]);
+
+      const modal = ensureSearchModal();
+      $('hubPlayerSearchResults').innerHTML = `
+        <div style="text-align:center;padding:10px 4px 4px">
+          ${p.avatar_url ? `<img src="${esc(p.avatar_url)}" alt="" style="width:84px;height:84px;border-radius:50%;object-fit:cover;background:#242833" onerror="this.style.display='none'">` : ''}
+          <h3 style="margin-top:12px">${esc(p.display_name || 'Player')}</h3>
+          <p class="hint">User ID: ${esc(p.user_id || 'N/A')}</p>
+          ${p.email ? `<p class="hint">${esc(p.email)}</p>` : ''}
+          <div style="display:flex;justify-content:center;gap:28px;margin:18px 0">
+            <span><strong>${likes.count || 0}</strong><br><small class="hint">Likes</small></span>
+            <span><strong>${followers.count || 0}</strong><br><small class="hint">Followers</small></span>
+            <span><strong>${following.count || 0}</strong><br><small class="hint">Following</small></span>
+          </div>
+          <button id="hubSearchBack" class="profile-action" style="width:auto;margin:0">← Back to Search</button>
+        </div>`;
+      $('hubSearchBack').onclick = () => {
+        modal.classList.add('open');
+        runSearch();
+      };
+    }
+
+    window.showSection = (type) => {
+      if (type === 'search') {
+        document.getElementById('menu')?.classList.remove('open');
+        document.getElementById('profileMenu')?.classList.remove('open');
+        openSearch();
+        return;
+      }
+      if (type === 'social') {
+        if (window.SusHub?.open) {
+          window.SusHub.open();
+          return;
+        }
+        const oldSocial = document.getElementById('hubSocialModal');
+        if (oldSocial) {
+          oldSocial.classList.add('open');
+          return;
+        }
+      }
+      return originalShowSection ? originalShowSection(type) : undefined;
+    };
+
+    window.SusHubSearch = { open: openSearch, search: runSearch };
+    console.log('[Sus Games] Main Hub search bridge ready');
+  }, { once:true });
 })();
