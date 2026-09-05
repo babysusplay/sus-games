@@ -29,7 +29,6 @@
     `;
     document.head.appendChild(style);
 
-    /* Search: same clean search window as the Quiz site, with live suggestions. */
     let searchTimer = null;
     let searchRequest = 0;
 
@@ -136,8 +135,6 @@
 
     window.SusHubSearch = { open: openSearch, search: runSearch };
 
-    /* IMPORTANT: the old Main Hub functions were only placeholders.
-       Always route Profile actions to the real shared profile system. */
     const installProfileBridge = () => {
       if (typeof window.sgViewProfile === 'function') {
         window.viewProfile = async function(){
@@ -226,6 +223,24 @@
       if (type === 'search'){ openSearch(); return; }
       if (type === 'social' && typeof window.openSocial === 'function'){ window.openSocial(); return; }
       if (type === 'leaderboard' && typeof window.openGlobalLeaderboard === 'function'){ window.openGlobalLeaderboard(); return; }
+    };
+
+    /* Safe navigation handoff: Quiz/Discord-bot code is not modified. */
+    const originalOpenGame = window.openGame;
+    window.openGame = async function(game){
+      const urls = {quiz:'https://babysusplay.github.io/quiz-website/',puzzle:'https://babysusplay.github.io/puzzle-sus/',drawzy:'https://babysusplay.github.io/Drawzy/'};
+      const target = urls[game];
+      if (!target) return typeof originalOpenGame === 'function' ? originalOpenGame(game) : undefined;
+      try{
+        const {data:{session}} = await sb.auth.getSession();
+        const returnTo = `${window.location.origin}${window.location.pathname}`;
+        if(session?.access_token && session?.refresh_token){
+          const fragment = new URLSearchParams({access_token:session.access_token,refresh_token:session.refresh_token,from:'sus-games',return_to:returnTo}).toString();
+          window.location.href = target + '#' + fragment;
+          return;
+        }
+      }catch(e){console.warn('[Sus Games] Session handoff unavailable:',e)}
+      window.location.href = target;
     };
 
     const profilePoll = setInterval(() => {
