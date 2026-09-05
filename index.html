@@ -66,7 +66,7 @@ function closeAuth(){document.getElementById('authModal').classList.remove('open
 function closeInfo(){document.getElementById('infoModal').classList.remove('open')}
 function closeLeaderboard(){document.getElementById('leaderboardModal').classList.remove('open')}
 function closeProfileModal(){document.getElementById('profileModal').classList.remove('open')}
-function escapeHtml(value){return String(value??'').replace(/[&<>\'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
+function escapeHtml(value){return String(value??'').replace(/[&<>\'\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]))}
 function showSection(type){document.getElementById('menu').classList.remove('open');document.getElementById('profileMenu').classList.remove('open');if(type==='leaderboard'){document.getElementById('leaderboardModal').classList.add('open');loadLeaderboard('all');return}const titles={search:'Search Players',social:'Social',about:'About Sus Games'};document.getElementById('infoTitle').textContent=titles[type]||'Sus Games';if(type==='about'){document.getElementById('infoBody').innerHTML='<p class="hint">Sus Games is a community game hub connecting Quiz, Puzzle and Drawzy.</p><div class="contact-list"><a class="contact-btn" href="https://discord.gg/MaFbeFesH" target="_blank" rel="noopener">💬 Join Discord Server</a><a class="contact-btn" href="mailto:babysusplay@gmail.com">✉ babysusplay@gmail.com</a><a class="contact-btn" href="https://www.instagram.com/babysus.4/" target="_blank" rel="noopener">📸 @babysus.4 on Instagram</a></div>'}else{const bodies={search:'Player search will use the shared Main Hub profile system.',social:'Your friends, follows and direct messages will live in the Main Hub.'};document.getElementById('infoBody').textContent=bodies[type]||''}document.getElementById('infoModal').classList.add('open')}
 function viewProfile(){if(!currentUser)return;document.getElementById('profileMenu').classList.remove('open');const name=document.getElementById('profileName').textContent||'Player';const avatar=document.getElementById('avatar').src;document.getElementById('profileTitle').textContent='View Profile';document.getElementById('profileBody').innerHTML='<div class="profile-card"><img class="big-avatar" src="'+escapeHtml(avatar||'')+'" onerror="this.style.display=\'none\'"><h3>'+escapeHtml(name)+'</h3><p>'+escapeHtml(currentUser.email||'')+'</p><p>Sus Games account</p></div>';document.getElementById('profileModal').classList.add('open')}
 function editProfile(){if(!currentUser)return;document.getElementById('profileMenu').classList.remove('open');document.getElementById('profileTitle').textContent='Edit Profile';document.getElementById('profileBody').innerHTML='<p class="hint">Profile editing is managed by the shared account system.</p><button class="profile-action" onclick="window.location.href=games.quiz+\'#profile\'">Open Profile Settings</button>';document.getElementById('profileModal').classList.add('open')}
@@ -78,7 +78,7 @@ function openAdmin(){document.getElementById('profileMenu').classList.remove('op
 supabaseClient.auth.onAuthStateChange(()=>loadSession());loadSession();
 document.addEventListener('click',e=>{if(!e.target.closest('.nav')){document.getElementById('menu').classList.remove('open');document.getElementById('profileMenu').classList.remove('open')}});
 </script>
-
 <script src="./hub-features.js"></script>
+<script src="./hub-enhancements.js"></script>
 </body>
 </html>
