@@ -6,7 +6,9 @@
 
   const sb = window.supabaseClient;
   if (!sb) return;
-  const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const esc = v => String(v ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+  const adminBadge = () => '<span class="sg-admin-badge">ADMIN</span>';
+
   const waitForAdminView = () => {
     if (typeof window.sgAdminViewUser !== 'function') {
       setTimeout(waitForAdminView, 100);
@@ -71,5 +73,75 @@
     wrapped.__susWrapped = true;
     window.sgAdminViewUser = wrapped;
   };
+
+  // Keep Quiz/Create/About out of the Main Hub header. Those controls belong to Quiz.
+  function cleanMainHubHeader() {
+    document.querySelectorAll('.header a,.header button').forEach(el => {
+      if (el.classList.contains('logo') || el.classList.contains('nav-btn') || el.classList.contains('admin-btn') || el.classList.contains('profile-trigger') || el.classList.contains('login') || el.classList.contains('more')) return;
+      const label = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (/^(Quiz|Create|About)$/.test(label)) el.remove();
+    });
+  }
+
+  function installHeaderCleanup() {
+    cleanMainHubHeader();
+    const header = document.querySelector('.header');
+    if (!header || header.__susHeaderCleanup) return;
+    header.__susHeaderCleanup = true;
+    const observer = new MutationObserver(cleanMainHubHeader);
+    observer.observe(header, { childList: true, subtree: true });
+  }
+
+  async function enhanceChatMessages(chatId) {
+    const out = document.getElementById('sgMessages');
+    if (!out || !chatId || !window.currentUser) return;
+    const { data: rows, error } = await sb.from('direct_messages')
+      .select('sender_id,recipient_id,message,created_at')
+      .or(`and(sender_id.eq.${window.currentUser.id},recipient_id.eq.${chatId}),and(sender_id.eq.${chatId},recipient_id.eq.${window.currentUser.id})`)
+      .order('created_at', { ascending: true }).limit(300);
+    if (error) return;
+    const ids = [...new Set((rows || []).map(r => r.sender_id))];
+    if (!ids.length) return;
+    const { data: profiles } = await sb.from('profiles').select('id,display_name,avatar_url').in('id', ids);
+    const pm = new Map((profiles || []).map(p => [p.id, p]));
+    const adminIds = new Set();
+    await Promise.all(ids.map(async id => {
+      if (String(id) === String(window.currentUser.id)) {
+        try { const { data } = await sb.rpc('is_admin'); if (data === true) adminIds.add(id); } catch {}
+      } else {
+        try { const { data } = await sb.from('admin_users').select('user_id').eq('user_id', id).maybeSingle(); if (data) adminIds.add(id); } catch {}
+      }
+    }));
+
+    out.innerHTML = (rows || []).map(r => {
+      const p = pm.get(r.sender_id) || {};
+      const name = p.display_name || 'User';
+      const mine = String(r.sender_id) === String(window.currentUser.id);
+      const avatar = p.avatar_url || '';
+      const avatarHtml = avatar
+        ? `<img class="sg-chat-avatar" src="${esc(avatar)}" alt="" onerror="this.style.display='none'">`
+        : `<span class="sg-chat-avatar sg-chat-fallback">${esc(name.trim().slice(0,1).toUpperCase() || 'P')}</span>`;
+      return `<div class="sg-msg ${mine ? 'me' : ''}"><div class="sg-msg-author">${avatarHtml}<strong>${esc(name)}</strong>${adminIds.has(r.sender_id) ? adminBadge() : ''}</div><div>${esc(r.message || '')}</div><small>${new Date(r.created_at).toLocaleString()}</small></div>`;
+    }).join('') || '<div class="sg-empty">No messages yet.</div>';
+    out.scrollTop = out.scrollHeight;
+  }
+
+  function installChatEnhancement() {
+    const wait = () => {
+      if (typeof window.sgOpenChat !== 'function') { setTimeout(wait, 100); return; }
+      const original = window.sgOpenChat;
+      if (original.__susChatWrapped) return;
+      async function wrapped(id) {
+        await original(id);
+        await enhanceChatMessages(id);
+      }
+      wrapped.__susChatWrapped = true;
+      window.sgOpenChat = wrapped;
+    };
+    wait();
+  }
+
+  installHeaderCleanup();
+  installChatEnhancement();
   waitForAdminView();
 })();
