@@ -42,6 +42,25 @@
     @media(max-width:700px){.sg-chat-content{max-width:80%}.sg-chat-avatar{width:31px;height:31px;flex-basis:31px}.sg-chat-image{max-width:72vw}.sg-chat-plus{width:44px;height:44px;flex-basis:44px}.sg-chat-compose-row textarea{min-height:58px;max-height:96px}.sg-chat-send{min-height:44px!important;padding:0 14px!important}}
   `;document.head.appendChild(chatCss);
 
+  /* Mobile main-hub game-card layout: keep the three game actions compact and consistent. */
+  const gameCardCss=document.createElement('style');gameCardCss.id='susGamesMobileGameCards';gameCardCss.textContent=`
+    .games .card{min-width:0}
+    .games .play{display:flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+    @media(max-width:800px){
+      .games{grid-template-columns:1fr;width:90%;gap:16px}
+      .games .card{width:100%;min-width:0;padding:24px;min-height:250px}
+      .games .play{width:100%;min-height:48px;padding:11px 14px;border-radius:10px;font-size:16px}
+    }
+  `;document.head.appendChild(gameCardCss);
+
+  const setGameButtonLabels=()=>{
+    const labels=['🎯 Play Quiz','🧩 Play Puzzle','🎨 Play Drawzy'];
+    document.querySelectorAll('.games .card .play').forEach((button,index)=>{
+      if(labels[index])button.textContent=labels[index];
+    });
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setGameButtonLabels,{once:true});else setGameButtonLabels();
+
   const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const fallbackAvatar=name=>'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80"><rect width="80" height="80" rx="40" fill="#242833"/><text x="40" y="48" text-anchor="middle" font-family="Arial" font-size="32" font-weight="700" fill="#9da3b0">${String(name||'P').trim().slice(0,1).toUpperCase()}</text></svg>`);
   const getSharedSupabase=()=>{try{if(typeof supabaseClient!=='undefined'&&supabaseClient)return supabaseClient}catch{}return window.supabaseClient||null};
