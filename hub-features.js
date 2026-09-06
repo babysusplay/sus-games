@@ -26,6 +26,8 @@
     .profile-trigger{width:52px!important;min-width:52px!important;max-width:52px!important;height:44px!important;padding:4px!important;justify-content:center!important;gap:0!important}
     .profile-trigger .profile-name,.profile-trigger .chevron,.profile-trigger .profile-caret{display:none!important}
     .profile-trigger .avatar,.profile-trigger .profile-avatar{width:36px!important;height:36px!important;margin:0!important;flex:0 0 36px!important}
+    .more{display:none!important}
+    #menu{display:none!important}
   `;
   document.head.appendChild(adminStyle);
 
@@ -48,6 +50,9 @@
   }
 
   function bind() {
+    document.querySelector('.more')?.remove();
+    const menu = document.getElementById('menu');
+    if (menu) menu.setAttribute('aria-hidden','true');
     if (typeof window.openAdminPanel === 'function') window.openAdmin = window.openAdminPanel;
     if (typeof window.sgEditProfile === 'function') window.editProfile = window.sgEditProfile;
     if (typeof window.sgViewProfile === 'function') {
