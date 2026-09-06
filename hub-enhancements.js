@@ -74,7 +74,6 @@
     window.sgAdminViewUser = wrapped;
   };
 
-  // Keep Quiz/Create/About out of the Main Hub header. Those controls belong to Quiz.
   function cleanMainHubHeader() {
     document.querySelectorAll('.header a,.header button').forEach(el => {
       if (el.classList.contains('logo') || el.classList.contains('nav-btn') || el.classList.contains('admin-btn') || el.classList.contains('profile-trigger') || el.classList.contains('login') || el.classList.contains('more')) return;
@@ -183,53 +182,13 @@
     style.textContent = `
       .sg-mobile-game-actions,.sg-mobile-game-brief{display:none}
       @media(max-width:800px){
-        .sg-mobile-game-actions{
-          width:90%;
-          margin:32px auto 0;
-          display:grid;
-          grid-template-columns:1fr;
-          gap:10px;
-        }
-        .sg-mobile-game-actions .sg-mobile-play{
-          width:100%;
-          margin:0;
-          padding:12px;
-          min-height:48px;
-          font-size:15px;
-          border-radius:10px;
-        }
+        .sg-mobile-game-actions{width:90%;margin:32px auto 0;display:grid;grid-template-columns:1fr;gap:10px}
+        .sg-mobile-game-actions .sg-mobile-play{width:100%;margin:0;padding:12px;min-height:48px;font-size:15px;border-radius:10px}
         .games{display:none!important}
-        .sg-mobile-game-brief{
-          width:90%;
-          margin:18px auto 0;
-          display:grid;
-          gap:9px;
-        }
-        .sg-mobile-game-brief-title{
-          font-size:13px;
-          font-weight:800;
-          color:#fff;
-          margin:0 2px 2px;
-        }
-        .sg-mobile-game-brief-item{
-          display:flex;
-          align-items:flex-start;
-          gap:11px;
-          padding:12px 13px;
-          background:#171a22;
-          border:1px solid rgba(255,255,255,.08);
-          border-radius:12px;
-        }
-        .sg-mobile-game-brief-item>span{
-          width:34px;
-          height:34px;
-          flex:0 0 34px;
-          display:grid;
-          place-items:center;
-          border-radius:9px;
-          background:rgba(255,255,255,.07);
-          font-size:17px;
-        }
+        .sg-mobile-game-brief{width:90%;margin:18px auto 0;display:grid;gap:9px}
+        .sg-mobile-game-brief-title{font-size:13px;font-weight:800;color:#fff;margin:0 2px 2px}
+        .sg-mobile-game-brief-item{display:flex;align-items:flex-start;gap:11px;padding:12px 13px;background:#171a22;border:1px solid rgba(255,255,255,.08);border-radius:12px}
+        .sg-mobile-game-brief-item>span{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:9px;background:rgba(255,255,255,.07);font-size:17px}
         .sg-mobile-game-brief-item strong{display:block;font-size:14px;margin-bottom:3px}
         .sg-mobile-game-brief-item p{color:#8f95a2;font-size:12px;line-height:1.4}
       }
@@ -241,4 +200,70 @@
   installChatEnhancement();
   waitForAdminView();
   installMobileGameLayout();
+})();
+
+/* Final Main Hub menu reliability fix. */
+(() => {
+  'use strict';
+  const run = () => {
+    const nav = document.querySelector('.nav');
+    const profile = document.getElementById('profile');
+    const profileTrigger = document.querySelector('.profile-trigger');
+    const profileMenu = document.getElementById('profileMenu');
+    const more = document.querySelector('.more');
+    const menu = document.getElementById('menu');
+    if (!nav || !profile || !profileTrigger || !profileMenu || !more || !menu) return false;
+
+    nav.style.position = 'relative';
+    profile.style.position = 'relative';
+    profileMenu.style.zIndex = '9999';
+    menu.style.zIndex = '9999';
+
+    const closeMenus = () => {
+      profileMenu.classList.remove('open');
+      menu.classList.remove('open');
+    };
+
+    window.toggleProfileMenu = () => {
+      const willOpen = !profileMenu.classList.contains('open');
+      menu.classList.remove('open');
+      profileMenu.classList.toggle('open', willOpen);
+    };
+
+    window.toggleMenu = () => {
+      const willOpen = !menu.classList.contains('open');
+      profileMenu.classList.remove('open');
+      menu.classList.toggle('open', willOpen);
+    };
+
+    profileTrigger.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.toggleProfileMenu();
+    };
+    more.onclick = e => {
+      e.preventDefault();
+      e.stopPropagation();
+      window.toggleMenu();
+    };
+
+    profileMenu.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', e => e.stopPropagation());
+    });
+    menu.querySelectorAll('button').forEach(btn => {
+      btn.addEventListener('click', e => e.stopPropagation());
+    });
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.nav')) closeMenus();
+    }, true);
+
+    return true;
+  };
+
+  if (!run()) {
+    const start = () => { if (!run()) setTimeout(start, 100); };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once:true});
+    else start();
+  }
 })();
