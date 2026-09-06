@@ -23,6 +23,11 @@
   adminStyle.textContent = `
     #adminBtn,.admin-menu-btn{display:none!important}
     #adminBtn.sg-admin-authorized{display:inline-flex!important;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 18px;border-radius:12px;box-sizing:border-box;font:inherit}
+    @media(max-width:800px){
+      .profile-trigger{width:52px!important;min-width:52px!important;max-width:52px!important;padding:0!important;justify-content:center!important;gap:0!important}
+      .profile-trigger .profile-name,.profile-trigger .profile-caret{display:none!important}
+      .profile-trigger .profile-avatar{width:36px!important;height:36px!important;margin:0!important;flex:0 0 36px!important}
+    }
   `;
   document.head.appendChild(adminStyle);
 
