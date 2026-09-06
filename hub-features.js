@@ -61,6 +61,32 @@
         document.getElementById('profileMenu')?.classList.remove('open');
       };
     }
+
+    // Carry the authenticated Supabase session from the Main Hub to each game.
+    // Each game SSO bridge consumes these short-lived tokens from the URL fragment.
+    const originalOpenGame = window.openGame;
+    if (typeof originalOpenGame === 'function' && !window.__susSharedOpenGameWrapped) {
+      window.__susSharedOpenGameWrapped = true;
+      window.openGame = async function(game) {
+        const urls = {
+          quiz: 'https://babysusplay.github.io/quiz-website/',
+          puzzle: 'https://babysusplay.github.io/puzzle-sus/',
+          drawzy: 'https://babysusplay.github.io/Drawzy/'
+        };
+        const target = urls[game];
+        if (!target) return originalOpenGame.apply(this, arguments);
+        try {
+          const sb = getSB();
+          const { data: { session } } = sb ? await sb.auth.getSession() : { data: { session: null } };
+          if (session?.access_token && session?.refresh_token) {
+            window.location.href = target + '#access_token=' + encodeURIComponent(session.access_token) + '&refresh_token=' + encodeURIComponent(session.refresh_token);
+            return;
+          }
+        } catch (_) {}
+        window.location.href = target;
+      };
+    }
+
     refreshAdminVisibility();
   }
 
