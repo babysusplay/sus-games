@@ -1,0 +1,62 @@
+name: Apply Main Hub Mobile Layout
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch mobile hub layout
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('hub-enhancements.js')
+          s=p.read_text()
+          marker='// MAIN_HUB_MOBILE_FINAL_PATCH'
+          if marker not in s:
+              patch=r'''
+
+// MAIN_HUB_MOBILE_FINAL_PATCH
+(() => {
+  'use strict';
+  const apply = () => {
+    if (window.innerWidth > 800) return;
+    const styleId='sg-mobile-requested-final-style';
+    if(!document.getElementById(styleId)){
+      const st=document.createElement('style'); st.id=styleId;
+      st.textContent=`
+        @media(max-width:800px){
+          .hero{display:block!important;width:90%!important;margin:38px auto 0!important;padding:8px 0 0!important;text-align:center!important}
+          .hero .kicker{display:none!important}
+          .hero h1{font-size:clamp(38px,10vw,52px)!important;line-height:1.05!important;letter-spacing:-2px!important;margin-bottom:12px!important}
+          .hero p{font-size:14px!important;line-height:1.5!important}
+          .games{display:none!important}
+          .sg-mobile-game-actions{display:grid!important;grid-template-columns:1fr!important;width:90%!important;margin:30px auto 0!important;gap:14px!important}
+          .sg-mobile-game-actions .sg-mobile-play{width:100%!important;height:64px!important;min-height:64px!important;margin:0!important;padding:0 16px!important;border-radius:14px!important;font-size:18px!important;font-weight:800!important;display:flex!important;align-items:center!important;justify-content:center!important}
+          .sg-mobile-game-brief{display:grid!important;width:90%!important;margin:28px auto 0!important;gap:0!important}
+          .sg-mobile-game-brief-title{font-size:22px!important;font-weight:800!important;margin:0 0 12px!important}
+          .sg-mobile-game-brief-item{display:block!important;padding:13px 0!important;background:transparent!important;border:0!important;border-top:1px solid rgba(255,255,255,.08)!important;border-radius:0!important}
+          .sg-mobile-game-brief-item>span{display:none!important}
+          .sg-mobile-game-brief-item strong{display:block!important;font-size:15px!important;margin-bottom:5px!important}
+          .sg-mobile-game-brief-item p{color:#8f95a2!important;font-size:13px!important;line-height:1.5!important}
+          .sg-mobile-game-brief::after{content:'About Info\\A\\ASus Games is a community hub for Quiz, Puzzle and Drawzy.';white-space:pre-wrap;display:block;margin-top:8px;padding:17px 0 24px;border-top:1px solid rgba(255,255,255,.08);color:#8f95a2;font-size:13px;line-height:1.5}
+          .footer{display:none!important}
+        }
+      `; document.head.appendChild(st);
+    }
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',apply,{once:true}); else setTimeout(apply,0);
+  window.addEventListener('resize',apply);
+})();
+'''
+              p.write_text(s.rstrip()+patch+'\n')
+          PY
+      - name: Commit patch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add hub-enhancements.js
+          git diff --cached --quiet || (git commit -m "Finalize requested mobile hub layout" && git push)
