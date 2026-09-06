@@ -141,7 +141,85 @@
     wait();
   }
 
+  function installMobileGameLayout() {
+    if (document.getElementById('sg-mobile-game-layout')) return;
+
+    const games = document.querySelector('.games');
+    if (!games) {
+      setTimeout(installMobileGameLayout, 100);
+      return;
+    }
+
+    const cards = [...games.querySelectorAll('.card')];
+    if (cards.length < 3) return;
+
+    const mobileActions = document.createElement('div');
+    mobileActions.id = 'sg-mobile-game-layout';
+    mobileActions.className = 'sg-mobile-game-actions';
+
+    cards.forEach(card => {
+      const play = card.querySelector('.play');
+      if (!play) return;
+      const mobilePlay = play.cloneNode(true);
+      mobilePlay.classList.add('sg-mobile-play');
+      mobileActions.appendChild(mobilePlay);
+    });
+
+    games.parentNode.insertBefore(mobileActions, games);
+
+    const style = document.createElement('style');
+    style.id = 'sg-mobile-game-layout-style';
+    style.textContent = `
+      .sg-mobile-game-actions{display:none}
+      @media(max-width:800px){
+        .sg-mobile-game-actions{
+          width:90%;
+          margin:32px auto 18px;
+          display:grid;
+          grid-template-columns:1fr;
+          gap:10px;
+        }
+        .sg-mobile-game-actions .sg-mobile-play{
+          width:100%;
+          margin:0;
+          padding:11px 12px;
+          font-size:15px;
+        }
+        .games{
+          width:90%;
+          margin-top:0;
+          display:grid;
+          grid-template-columns:1fr;
+          gap:12px;
+        }
+        .games .card{
+          min-height:0;
+          padding:17px 18px;
+          border-radius:16px;
+        }
+        .games .card .play{display:none}
+        .games .card .icon{
+          width:42px;
+          height:42px;
+          font-size:21px;
+          margin-bottom:10px;
+        }
+        .games .card h2{
+          font-size:20px;
+          margin-bottom:5px;
+        }
+        .games .card p{
+          flex:none;
+          font-size:14px;
+          line-height:1.45;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
   installHeaderCleanup();
   installChatEnhancement();
   waitForAdminView();
+  installMobileGameLayout();
 })();
