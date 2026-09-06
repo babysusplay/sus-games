@@ -157,6 +157,16 @@
     mobileActions.id = 'sg-mobile-game-layout';
     mobileActions.className = 'sg-mobile-game-actions';
 
+    const brief = document.createElement('div');
+    brief.id = 'sg-mobile-game-brief';
+    brief.className = 'sg-mobile-game-brief';
+    brief.innerHTML = `
+      <div class="sg-mobile-game-brief-title">Game Brief</div>
+      <div class="sg-mobile-game-brief-item"><span>🎯</span><div><strong>Quiz</strong><p>Create quizzes, play community quizzes and compete.</p></div></div>
+      <div class="sg-mobile-game-brief-item"><span>🧩</span><div><strong>Puzzle</strong><p>Solve puzzles, find the right solution and climb the ranking.</p></div></div>
+      <div class="sg-mobile-game-brief-item"><span>🎨</span><div><strong>Drawzy</strong><p>Draw, guess and compete in multiplayer rooms.</p></div></div>
+    `;
+
     cards.forEach(card => {
       const play = card.querySelector('.play');
       if (!play) return;
@@ -166,15 +176,16 @@
     });
 
     games.parentNode.insertBefore(mobileActions, games);
+    games.parentNode.insertBefore(brief, games.nextSibling);
 
     const style = document.createElement('style');
     style.id = 'sg-mobile-game-layout-style';
     style.textContent = `
-      .sg-mobile-game-actions{display:none}
+      .sg-mobile-game-actions,.sg-mobile-game-brief{display:none}
       @media(max-width:800px){
         .sg-mobile-game-actions{
           width:90%;
-          margin:32px auto 18px;
+          margin:32px auto 0;
           display:grid;
           grid-template-columns:1fr;
           gap:10px;
@@ -182,37 +193,45 @@
         .sg-mobile-game-actions .sg-mobile-play{
           width:100%;
           margin:0;
-          padding:11px 12px;
+          padding:12px;
+          min-height:48px;
           font-size:15px;
+          border-radius:10px;
         }
-        .games{
+        .games{display:none!important}
+        .sg-mobile-game-brief{
           width:90%;
-          margin-top:0;
+          margin:18px auto 0;
           display:grid;
-          grid-template-columns:1fr;
-          gap:12px;
+          gap:9px;
         }
-        .games .card{
-          min-height:0;
-          padding:17px 18px;
-          border-radius:16px;
+        .sg-mobile-game-brief-title{
+          font-size:13px;
+          font-weight:800;
+          color:#fff;
+          margin:0 2px 2px;
         }
-        .games .card .play{display:none}
-        .games .card .icon{
-          width:42px;
-          height:42px;
-          font-size:21px;
-          margin-bottom:10px;
+        .sg-mobile-game-brief-item{
+          display:flex;
+          align-items:flex-start;
+          gap:11px;
+          padding:12px 13px;
+          background:#171a22;
+          border:1px solid rgba(255,255,255,.08);
+          border-radius:12px;
         }
-        .games .card h2{
-          font-size:20px;
-          margin-bottom:5px;
+        .sg-mobile-game-brief-item>span{
+          width:34px;
+          height:34px;
+          flex:0 0 34px;
+          display:grid;
+          place-items:center;
+          border-radius:9px;
+          background:rgba(255,255,255,.07);
+          font-size:17px;
         }
-        .games .card p{
-          flex:none;
-          font-size:14px;
-          line-height:1.45;
-        }
+        .sg-mobile-game-brief-item strong{display:block;font-size:14px;margin-bottom:3px}
+        .sg-mobile-game-brief-item p{color:#8f95a2;font-size:12px;line-height:1.4}
       }
     `;
     document.head.appendChild(style);
