@@ -18,14 +18,11 @@
     return window.supabaseClient || null;
   };
 
-  /* Admin button must stay invisible unless the current authenticated user is verified as admin. */
   const adminStyle = document.createElement('style');
   adminStyle.id = 'susGamesSecureAdminStyle';
   adminStyle.textContent = `
     #adminBtn,.admin-menu-btn{display:none!important}
     #adminBtn.sg-admin-authorized{display:inline-flex!important;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 18px;border-radius:12px;box-sizing:border-box;font:inherit}
-    @media(max-width:800px){#adminBtn.sg-admin-authorized{display:none!important}}
-    @media(min-width:801px){#adminBtn.sg-admin-authorized{display:inline-flex!important}}
   `;
   document.head.appendChild(adminStyle);
 
@@ -65,7 +62,6 @@
   const sb = getSB();
   if (sb?.auth) sb.auth.onAuthStateChange(() => setTimeout(refreshAdminVisibility, 0));
 
-  /* Mobile Main Hub: exactly three vertical play buttons, then a compact brief and About Info. */
   function installMobileHub() {
     if (document.getElementById('sg-mobile-final-layout')) return;
     const games = document.querySelector('.games');
