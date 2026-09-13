@@ -267,3 +267,64 @@
     else start();
   }
 })();
+
+/* =========================================================
+   Main Hub Login — compact Google / Discord provider modal
+   Styled to match the Quiz login experience.
+========================================================= */
+(() => {
+  'use strict';
+  const install = () => {
+    const modal = document.getElementById('authModal');
+    const box = modal?.querySelector('.modal-box');
+    if (!modal || !box) return false;
+    if (document.getElementById('sus-hub-login-style')) return true;
+
+    const style = document.createElement('style');
+    style.id = 'sus-hub-login-style';
+    style.textContent = `
+      #authModal .modal-box{width:min(525px,100%);max-height:none;padding:38px 38px 36px;border-radius:24px;background:#181b23;border:1px solid rgba(255,255,255,.16);box-shadow:0 28px 90px rgba(0,0,0,.58)}
+      #authModal .modal-head{margin-bottom:34px;align-items:center}
+      #authModal .modal-head h2{font-size:31px;line-height:1;font-weight:900}
+      #authModal .close{font-size:28px;font-weight:800;color:#aaa}
+      #authModal .hint{font-size:16px;color:#a8adb8;text-align:center;margin:0 0 21px}
+      #authModal .auth-btn{height:58px;margin-top:0;border-radius:13px;display:flex;align-items:center;justify-content:center;gap:14px;font-size:16px;font-weight:800;transition:.16s ease}
+      #authModal .auth-btn + .auth-btn{margin-top:15px}
+      #authModal .auth-btn:first-of-type{background:#fff;color:#171717;border-color:#fff}
+      #authModal .auth-btn:first-of-type:hover{background:#f1f1f1;transform:translateY(-1px)}
+      #authModal .auth-btn:last-of-type{background:#2b2e36;color:#fff;border-color:#4a4d56}
+      #authModal .auth-btn:last-of-type:hover{background:#343741;transform:translateY(-1px)}
+      #authModal .hub-oauth-icon{display:inline-grid;place-items:center;flex:0 0 auto}
+      #authModal .hub-google-icon{font-family:Arial,sans-serif;font-size:26px;font-weight:900;line-height:1}
+      #authModal .hub-discord-icon{width:25px;height:25px;border-radius:7px;background:#fff;color:#2b2e36;font-size:15px;font-weight:900}
+      #authModal #authStatus{min-height:18px;margin-top:12px;text-align:center;font-size:12px}
+      @media(max-width:560px){#authModal .modal-box{padding:31px 21px 25px}#authModal .modal-head h2{font-size:28px}#authModal .auth-btn{height:54px;font-size:15px}}
+    `;
+    document.head.appendChild(style);
+
+    const oldOpen = window.openAuth;
+    window.openAuth = function(){
+      const head=box.querySelector('.modal-head');
+      const title=head?.querySelector('h2');
+      const hint=box.querySelector('.hint');
+      if(title) title.textContent='Login';
+      if(hint) hint.textContent='Please login first to continue.';
+      const buttons=box.querySelectorAll('.auth-btn');
+      if(buttons[0] && !buttons[0].querySelector('.hub-google-icon')){
+        buttons[0].innerHTML='<span class="hub-oauth-icon hub-google-icon">G</span><span>Continue with Google</span>';
+      }
+      if(buttons[1] && !buttons[1].querySelector('.hub-discord-icon')){
+        buttons[1].innerHTML='<span class="hub-oauth-icon hub-discord-icon">◉</span><span>Continue with Discord</span>';
+      }
+      if(typeof oldOpen==='function') return oldOpen.apply(this,arguments);
+      modal.classList.add('open');
+    };
+    return true;
+  };
+
+  if(!install()){
+    const boot=()=>{if(!install())setTimeout(boot,100)};
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});
+    else boot();
+  }
+})();
