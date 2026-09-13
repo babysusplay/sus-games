@@ -14,8 +14,8 @@ const SUPABASE_URL='https://wnjsajfahsqunfesmetu.supabase.co';
 const SUPABASE_KEY='sb_publishable_S_ePD9oEegH0R0XR8LGvjQ_sMs9OZSm';
 const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 </script>
-<script src="./hub-features.js?v=9a698be086316526da739db802c7a24cb1f7a899" defer></script>
-<script src="./hub-override.js?v=9a698be086316526da739db802c7a24cb1f7a899"></script>
+<script src="./hub-features.js?v=8985180b26ce3dc2bbd56f62673851ced772de38" defer></script>
+<script src="./hub-override.js?v=63a33c9adc4e4ecc29669eafdc674f328d36f90b"></script>
 </head>
 <body>
 <header class="header">
@@ -78,7 +78,30 @@ async function loadSession(){const {data:{session}}=await supabaseClient.auth.ge
 supabaseClient.auth.onAuthStateChange(()=>loadSession());loadSession();
 document.addEventListener('click',e=>{if(!e.target.closest('.nav')){document.getElementById('menu').classList.remove('open');document.getElementById('profileMenu').classList.remove('open')}});
 </script>
-<script src="./hub-features.js"></script>
-<script src="./hub-enhancements.js"></script>
+<script src="./hub-features.js?v=8985180b26ce3dc2bbd56f62673851ced772de38"></script>
+<script src="./hub-enhancements.js?v=latest"></script>
+<script id="sus-games-final-reliability-fix">
+(() => {
+  const bind = () => {
+    const $ = id => document.getElementById(id);
+    const wire = (el, fn) => {
+      if (!el || typeof fn !== 'function') return;
+      el.onclick = e => { e.preventDefault(); e.stopPropagation(); fn(); };
+      el.style.pointerEvents = 'auto';
+    };
+    wire($('loginBtn'), () => window.openAuth && window.openAuth());
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      const text = (btn.textContent || '').toLowerCase();
+      if (text.includes('search')) wire(btn, () => window.openPlayerSearch ? window.openPlayerSearch() : window.showSection('search'));
+      else if (text.includes('leaderboard')) wire(btn, () => window.openLeaderboard ? window.openLeaderboard() : window.showSection('leaderboard'));
+      else if (text.includes('social')) wire(btn, () => window.openSocial ? window.openSocial() : window.showSection('social'));
+    });
+    const logo = document.querySelector('.logo');
+    wire(logo, () => window.goHome && window.goHome());
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind, {once:true});
+  else bind();
+})();
+</script>
 </body>
 </html>
