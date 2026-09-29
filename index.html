@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<link rel="icon" type="image/svg+xml" href="./logo.svg">
+<link rel="apple-touch-icon" href="./logo.svg">
 <title>Sus Games</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
@@ -16,10 +18,11 @@ const supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{aut
 </script>
 <script src="./hub-features.js?v=66087b235432a8d417876ed3c136cd16bc2ea6e6" defer></script>
 <script src="./hub-override.js?v=66087b235432a8d417876ed3c136cd16bc2ea6e6"></script>
+<style id="shared-sus-games-logo-style">.site-logo-mark{width:42px;height:42px;display:block;object-fit:contain}.home-logo .site-logo-mark{width:42px;height:42px}@media(max-width:650px){.site-logo-mark,.home-logo .site-logo-mark{width:36px;height:36px}}</style>
 </head>
 <body>
 <header class="header">
-<button class="logo" onclick="goHome()">Sus Games</button>
+<button class="logo" onclick="goHome()" aria-label="Sus Games"><img class="site-logo-mark" src="./logo.svg" alt="Sus Games"></button>
 <nav class="nav">
 <button class="nav-btn" onclick="showSection('search')"><span class="label">🔎 Search</span><span class="short">🔎</span></button>
 <button class="nav-btn" onclick="showSection('leaderboard')"><span class="label">🏆 Leaderboard</span><span class="short">🏆</span></button>
