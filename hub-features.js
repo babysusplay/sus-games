@@ -1,4 +1,4 @@
-/* Sus Games Main Hub - mobile layout + secure admin visibility bridge */
+/* SUS GAMES Main Hub - mobile layout + secure admin visibility bridge */
 (() => {
   'use strict';
 
@@ -130,7 +130,7 @@
 
     const about = document.createElement('section');
     about.id = 'sg-mobile-final-about';
-    about.innerHTML = `<h2>About Info</h2><p>Sus Games is a community hub connecting Quiz, Puzzle and Drawzy.</p>`;
+    about.innerHTML = `<h2>About Info</h2><p>SUS GAMES is a community hub connecting Quiz, Puzzle and Drawzy.</p>`;
 
     games.parentNode.insertBefore(wrap, games);
     games.parentNode.insertBefore(brief, games.nextSibling);
