@@ -1,4 +1,4 @@
-/* Sus Games Main Hub - admin game details enhancement. */
+/* SUS GAMES Main Hub - admin game details enhancement. */
 (() => {
   'use strict';
   if (window.__susGamesAdminGameDetails) return;
