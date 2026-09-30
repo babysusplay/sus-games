@@ -7,6 +7,8 @@
 <link rel="apple-touch-icon" href="./logo.svg">
 <title>Sus Games | Quiz, Puzzle & Drawzy</title>
 <meta name="description" content="Sus Games is a community game hub for Quiz, Puzzle and Drawzy. Create and play quizzes, solve puzzles, draw, guess and compete with others.">
+<meta name="application-name" content="Sus Games">
+<meta property="og:site_name" content="Sus Games">
 <link rel="canonical" href="https://babysusplay.github.io/sus-games/">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <meta property="og:type" content="website">
@@ -21,10 +23,24 @@
 <script type="application/ld+json">
 {
   "@context":"https://schema.org",
-  "@type":"WebSite",
-  "name":"Sus Games",
-  "url":"https://babysusplay.github.io/sus-games/",
-  "description":"A community game hub for Quiz, Puzzle and Drawzy."
+  "@graph":[
+    {
+      "@type":"WebSite",
+      "@id":"https://babysusplay.github.io/sus-games/#website",
+      "name":"Sus Games",
+      "url":"https://babysusplay.github.io/sus-games/",
+      "description":"A community game hub for Quiz, Puzzle and Drawzy.",
+      "publisher":{"@id":"https://babysusplay.github.io/sus-games/#organization"}
+    },
+    {
+      "@type":"Organization",
+      "@id":"https://babysusplay.github.io/sus-games/#organization",
+      "name":"Sus Games",
+      "url":"https://babysusplay.github.io/sus-games/",
+      "logo":"https://babysusplay.github.io/sus-games/logo.svg",
+      "sameAs":["https://www.instagram.com/babysus.4/"]
+    }
+  ]
 }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
