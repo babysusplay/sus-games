@@ -1,4 +1,4 @@
-/* Sus Games - public profile privacy + admin badge */
+/* SUS GAMES - public profile privacy + admin badge */
 (() => {
   'use strict';
 
